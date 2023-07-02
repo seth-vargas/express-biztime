@@ -31,7 +31,10 @@ router.get("/", async (req, res) => {
 router.get("/:code", async (req, res) => {
     try {
         const code = req.params.code
-        const company = await helpers.getCompanyByCode(code)
+        const companyPromise = helpers.getCompanyByCode(code)
+        const invoicePromise = helpers.getInvoicesByCompany(code)
+
+        const [company, invoices] = await Promise.all([companyPromise, invoicePromise])
 
         if (!company) {
             return helpers.handleNotFoundError(res, code)
@@ -42,7 +45,7 @@ router.get("/:code", async (req, res) => {
                 code: company.code,
                 name: company.name,
                 description: company.description,
-                invoices: await helpers.getInvoicesByCompany(code)
+                invoices: invoices
             },
         })
     } catch (err) {
@@ -61,13 +64,7 @@ router.post("/", async (req, res) => {
             [code, name, description]
         )
         const newCompany = result.rows[0]
-        return res.status(201).json({
-            company: {
-                code: newCompany.code,
-                name: newCompany.name,
-                description: newCompany.description
-            }
-        })
+        return res.status(201).json({ company: newCompany })
     } catch (err) {
         console.log(err)
         return res.status(500).json({ err: "An error occured while creating a new company" })
@@ -91,13 +88,7 @@ router.put("/:code", async (req, res) => {
             [code, name, description]
         )
         const updatedCompany = result.rows[0]
-        return res.status(200).json({
-            company: {
-                code: updatedCompany.code,
-                name: updatedCompany.name,
-                description: updatedCompany.description
-            }
-        })
+        return res.status(200).json({ company: { updatedCompany } })
     } catch (err) {
         console.log(err)
         return helpers.handleServerError(res, err)

@@ -14,7 +14,6 @@ async function getInvoiceById(id) {
     "SELECT id, amt, paid, add_date, paid_date, comp_code FROM invoices WHERE id = $1",
     [id]
     )
-    console.log(result)
     return result.rows[0]
 }
 
