@@ -1,6 +1,7 @@
 const express = require("express")
 const app = express()
 const db = require("../db")
+const helpers = require("../helpers")
 const router = new express.Router()
 
 app.use(express.json())
@@ -28,27 +29,25 @@ router.get("/", async (req, res) => {
 
 router.get("/:code", async (req, res) => {
     try {
-        const code = req.params.code
-        const result = await db.query(
-            "SELECT code, name, description FROM companies WHERE code = $1",
-            [code]
-        )
-        if (result.rows.length === 0) {
-            return res.status(404).json({ message: `${code} not found` })
-        }
-        const company = result.rows[0]
-        return res.status(200).json({
-            company: {
-                code: company.code,
-                name: company.name,
-                description: company.description
-            }
-        })
+      const code = req.params.code
+      const company = await helpers.getCompanyByCode(code)
+  
+      if (!company) {
+        return helpers.handleNotFoundError(res, code)
+      }
+  
+      return res.status(200).json({
+        company: {
+          code: company.code,
+          name: company.name,
+          description: company.description,
+        },
+      })
     } catch (err) {
-        console.log(err)
-        return res.status(500).json({ err: 'An error occurred while getting a company' })
+      console.log(err)
+      return helpers.handleServerError(res, 'An error occurred while getting a company')
     }
-})
+  })
 
 /* Returns obj of new company: {company: {code, name, description}}. Needs to be given JSON like: {code, name, description} */
 
@@ -78,12 +77,10 @@ router.post("/", async (req, res) => {
 router.put("/:code", async (req, res) => {
     try {
         const code = req.params.code
-        const existingCompany = await db.query(
-            "SELECT code, name, description FROM companies WHERE code = $1",
-            [code]
-        )
-        if (existingCompany.rows.length === 0) {
-            return res.status(404).json({ error: "Company not found" })
+        const existingCompany = await helpers.getCompanyByCode(code)
+
+        if (!existingCompany) {
+            return helpers.handleNotFoundError(res, code)
         }
         const company = existingCompany.rows[0]
         const name = req.body.name || company.name
@@ -102,7 +99,7 @@ router.put("/:code", async (req, res) => {
         })
     } catch (err) {
         console.log(err)
-        return res.status(500).json({ err: "An error occured while updating a company" })
+        return helpers.handleServerError(res, err)
     }
 })
 
