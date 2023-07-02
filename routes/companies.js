@@ -25,29 +25,31 @@ router.get("/", async (req, res) => {
 })
 
 
-/* Return obj of company: {company: {code, name, description}}. If company cannot be found, return 404 status response. */
+/*  GET / companies / [code] -> get a company
+    Return obj of company: { company: { code, name, description, invoices: [id, ...] } }. If company cannot be found, return 404 status response. */
 
 router.get("/:code", async (req, res) => {
     try {
-      const code = req.params.code
-      const company = await helpers.getCompanyByCode(code)
-  
-      if (!company) {
-        return helpers.handleNotFoundError(res, code)
-      }
-  
-      return res.status(200).json({
-        company: {
-          code: company.code,
-          name: company.name,
-          description: company.description,
-        },
-      })
+        const code = req.params.code
+        const company = await helpers.getCompanyByCode(code)
+
+        if (!company) {
+            return helpers.handleNotFoundError(res, code)
+        }
+
+        return res.status(200).json({
+            company: {
+                code: company.code,
+                name: company.name,
+                description: company.description,
+                invoices: await helpers.getInvoicesByCompany(code)
+            },
+        })
     } catch (err) {
-      console.log(err)
-      return helpers.handleServerError(res, 'An error occurred while getting a company')
+        console.log(err)
+        return helpers.handleServerError(res, 'An error occurred while getting a company')
     }
-  })
+})
 
 /* Returns obj of new company: {company: {code, name, description}}. Needs to be given JSON like: {code, name, description} */
 
@@ -82,9 +84,8 @@ router.put("/:code", async (req, res) => {
         if (!existingCompany) {
             return helpers.handleNotFoundError(res, code)
         }
-        const company = existingCompany.rows[0]
-        const name = req.body.name || company.name
-        const description = req.body.description || company.description
+        const name = req.body.name || existingCompany.name
+        const description = req.body.description || existingCompany.description
         const result = await db.query(
             "UPDATE companies SET name = $2, description = $3 WHERE code = $1 RETURNING code, name, description",
             [code, name, description]
