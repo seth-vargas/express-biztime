@@ -73,7 +73,7 @@ router.post("/", async (req, res) => {
     }
 })
 
-/* Returns update company object: {company: {code, name, description}}. Should return 404 if company cannot be found. */
+/* Returns update company object: {company: {code, name, description}}. Should return 404 if company cannot be found. Needs to be given JSON like: {name, description} */
 
 router.put("/:code", async (req, res) => {
     try {
@@ -115,10 +115,10 @@ router.delete("/:code", async (req, res) => {
             "DELETE FROM companies WHERE code = $1",
             [code]
         )
-        if (result.rowCount=== 0) {
+        if (result.rowCount === 0) {
             return res.status(404).json({ error: "Company not found" })
         }
-        return res.status(200).json({status: "deleted"})
+        return res.status(200).json({ status: "deleted" })
     } catch (err) {
         console.log(err)
         return res.status(500).json({ err: "An error occured while deleting a company" })
