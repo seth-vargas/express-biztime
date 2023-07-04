@@ -34,14 +34,7 @@ router.get("/:id", async (req, res) => {
             return helpers.handleNotFoundError(res, req.params.id)
         }
         const company = await helpers.getCompanyByCode(invoice.comp_code)
-        const invoiceData = {
-            id: invoice.id,
-            amt: invoice.amt,
-            paid: invoice.paid,
-            add_date: invoice.add_date,
-            paid_date: invoice.paid_date,
-            company: company
-        }
+        const invoiceData = { ...invoice, company }
         return res.status(200).json({ invoice: invoiceData })
     } catch (error) {
         console.log(error)

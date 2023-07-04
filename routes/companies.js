@@ -30,23 +30,15 @@ router.get("/", async (req, res) => {
 
 router.get("/:code", async (req, res) => {
     try {
-        const code = req.params.code
-        const companyPromise = helpers.getCompanyByCode(code)
-        const invoicePromise = helpers.getInvoicesByCompany(code)
-
-        const [company, invoices] = await Promise.all([companyPromise, invoicePromise])
+        const { code } = req.params
+        const [company, invoices] = await Promise.all([helpers.getCompanyByCode(code), helpers.getInvoicesByCompany(code)])
 
         if (!company) {
             return helpers.handleNotFoundError(res, code)
         }
 
         return res.status(200).json({
-            company: {
-                code: company.code,
-                name: company.name,
-                description: company.description,
-                invoices: invoices
-            },
+            company: { ...company, invoices },
         })
     } catch (err) {
         console.log(err)
@@ -87,8 +79,8 @@ router.put("/:code", async (req, res) => {
             "UPDATE companies SET name = $2, description = $3 WHERE code = $1 RETURNING code, name, description",
             [code, name, description]
         )
-        const updatedCompany = result.rows[0]
-        return res.status(200).json({ company: { updatedCompany } })
+        const company = result.rows[0]
+        return res.status(200).json({ company })
     } catch (err) {
         console.log(err)
         return helpers.handleServerError(res, err)
