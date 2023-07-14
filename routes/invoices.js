@@ -24,8 +24,13 @@ router.get("/", async (req, res) => {
     }
 })
 
-/*  GET / invoices / [id] -> Gets an invoice
-    Returns { invoice: { id, amt, paid, add_date, paid_date, company: { code, name, description } } }. If invoice cannot be found, returns 404. */
+/*  
+    GET / invoices / [id] -> Gets an invoice
+
+    If invoice cannot be found, returns 404. 
+
+    Returns { invoice: { id, amt, paid, add_date, paid_date, company: { code, name, description } } }.
+*/
 
 router.get("/:id", async (req, res) => {
     try {
@@ -42,9 +47,12 @@ router.get("/:id", async (req, res) => {
     }
 })
 
-/*  POST / invoices -> Adds an invoice
+/*
+    POST / invoices -> Adds an invoice
+
     Returns: { invoice: { id, comp_code, amt, paid, add_date, paid_date }. 
-    Needs to be passed in JSON body of: { comp_code, amt } */
+    Needs to be passed in JSON body of: { comp_code, amt } 
+*/
 
 router.post("/", async (req, res) => {
     try {
@@ -69,30 +77,60 @@ router.post("/", async (req, res) => {
     }
 })
 
-/*  PUT / invoices / [id] -> Updates an invoice
-    Returns: { invoice: { id, comp_code, amt, paid, add_date, paid_date } }. If invoice cannot be found, returns a 404. 
-    Needs to be passed in a JSON body of { amt }. */
+/*  
+    PUT /invoices/[id] -> Updates an invoice
+
+    If invoice cannot be found, returns a 404.
+
+    Needs to be passed in a JSON body of {amt, paid}
+
+    If paying unpaid invoice: sets paid_date to today
+    If un-paying: sets paid_date to null
+    Else: keep current paid_date
+    Returns: {invoice: {id, comp_code, amt, paid, add_date, paid_date}} 
+*/
 
 router.put("/:id", async (req, res) => {
     try {
-        const invoice = await helpers.getInvoiceById(req.params.id)
+        const { id } = req.params
+        const { amt, paid } = req.body
+
+        const invoice = await helpers.getInvoiceById(id)
+
         if (!invoice) {
-            return helpers.handleNotFoundError(res, req.params.id)
+            return helpers.handleNotFoundError(res, id)
         }
+
+        const currentPaidDate = invoice.paid_date
+        let paidDate
+
+        if (paid && !currentPaidDate) {
+            paidDate = helpers.newDate()
+        } else if (!paid) {
+            paidDate = null;
+        } else {
+            paidDate = currentPaidDate;
+        }
+
         const result = await db.query(
-            "UPDATE invoices SET amt = $2 WHERE id = $1 RETURNING id, comp_code, amt, paid, add_date, paid_date",
-            [req.params.id, req.body.amt]
+            "UPDATE invoices SET amt = $2, paid = $3, paid_date = $4 WHERE id = $1 RETURNING id, comp_code, amt, paid, add_date, paid_date",
+            [id, (amt || invoice.amt), paid, paidDate]
         )
-        const updatedInvoice = result.rows[0]
-        return res.status(200).json({ invoice: updatedInvoice })
+
+        return res.status(200).json({ invoice: result.rows[0] })
     } catch (error) {
         console.log(error)
         return helpers.handleServerError(res, "An error occured while updating an invoice")
     }
 })
 
-/*  DELETE / invoices / [id] -> Deletes an invoice. 
-    Returns: { status: "deleted" }. If invoice cannot be found, returns a 404. */
+/*  
+    DELETE / invoices / [id] -> Deletes an invoice. 
+
+    If invoice cannot be found, returns a 404.
+
+    Returns: { status: "deleted" }. 
+*/
 
 router.delete("/:id", async (req, res) => {
     try {

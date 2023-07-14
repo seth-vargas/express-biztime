@@ -2,11 +2,16 @@ const express = require("express")
 const app = express()
 const db = require("../db")
 const helpers = require("../helpers")
+const { default: slugify } = require("slugify")
 const router = new express.Router()
 
 app.use(express.json())
 
-/* Returns list of companies - {companies: [{code, name}, ...]} */
+/* 
+    GET / companies -> get all companies
+
+    Returns list of companies - {companies: [{code, name}, ...]} 
+*/
 
 router.get("/", async (req, res) => {
     try {
@@ -25,35 +30,47 @@ router.get("/", async (req, res) => {
 })
 
 
-/*  GET / companies / [code] -> get a company
-    Return obj of company: { company: { code, name, description, invoices: [id, ...] } }. If company cannot be found, return 404 status response. */
+/*
+    GET / companies / [code] -> get a company
+
+    If company cannot be found, return 404 status response.
+
+    Return obj of company: { company: { code, name, description, invoices: [id, ...] } }. 
+*/
 
 router.get("/:code", async (req, res) => {
     try {
         const { code } = req.params
         const [company, invoices] = await Promise.all([helpers.getCompanyByCode(code), helpers.getInvoicesByCompany(code)])
 
-        if (!company) {
+        if (!company[0]) {
             return helpers.handleNotFoundError(res, code)
         }
 
-        return res.status(200).json({
-            company: { ...company, invoices },
-        })
+        const { description, name } = company
+        const industries = company.map(r => r.industry_name)
+
+        return res.status(200).json({ company: { code, name, description, industries, invoices } })
     } catch (err) {
         console.log(err)
         return helpers.handleServerError(res, 'An error occurred while getting a company')
     }
 })
 
-/* Returns obj of new company: {company: {code, name, description}}. Needs to be given JSON like: {code, name, description} */
+/* 
+    POST / companies -> add a company to db
+
+    Needs to be given JSON like: {code, name, description} 
+
+    Returns obj of new company: {company: {code, name, description}}.
+*/
 
 router.post("/", async (req, res) => {
     try {
         const { code, name, description } = req.body
         const result = await db.query(
             "INSERT INTO companies (code, name, description) VALUES ($1, $2, $3) RETURNING code, name, description",
-            [code, name, description]
+            [slugify(code), name, description]
         )
         const newCompany = result.rows[0]
         return res.status(201).json({ company: newCompany })
@@ -63,16 +80,25 @@ router.post("/", async (req, res) => {
     }
 })
 
-/* Returns update company object: {company: {code, name, description}}. Should return 404 if company cannot be found. Needs to be given JSON like: {name, description} */
+/* 
+    PUT / companies / [code] -> updates a company
+
+    Should return 404 if company cannot be found. 
+    
+    Needs to be given JSON like: {name, description} 
+
+    Returns update company object: {company: {code, name, description}}. 
+*/
 
 router.put("/:code", async (req, res) => {
     try {
         const code = req.params.code
-        const existingCompany = await helpers.getCompanyByCode(code)
+        const results = await helpers.getCompanyByCode(code)
 
-        if (!existingCompany) {
+        if (!results[0]) {
             return helpers.handleNotFoundError(res, code)
         }
+        const existingCompany = results[0]
         const name = req.body.name || existingCompany.name
         const description = req.body.description || existingCompany.description
         const result = await db.query(
@@ -87,7 +113,13 @@ router.put("/:code", async (req, res) => {
     }
 })
 
-/* Returns {status: "deleted"}. Should return 404 if company cannot be found. */
+/* 
+    DELETE / companies / [code] -> remove a company from db
+
+    Should return 404 if company cannot be found. 
+
+    Returns {status: "deleted"}. 
+*/
 
 router.delete("/:code", async (req, res) => {
     try {
@@ -97,7 +129,7 @@ router.delete("/:code", async (req, res) => {
             [code]
         )
         if (result.rowCount === 0) {
-            return res.status(404).json({ error: "Company not found" })
+            return res.status(404).json({ error: `${code} not found` })
         }
         return res.status(200).json({ status: "deleted" })
     } catch (err) {
@@ -107,3 +139,9 @@ router.delete("/:code", async (req, res) => {
 })
 
 module.exports = router
+
+// Add routes for:
+
+// adding an industry
+// listing all industries, which should show the company code(s) for that industry
+// associating an industry to a company
