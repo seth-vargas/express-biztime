@@ -42,10 +42,6 @@ function handleNotFoundError(res, primaryKey) {
     return res.status(404).json({ error: `${primaryKey} not found` });
 }
 
-function handleServerError(res, errorMessage) {
-    return res.status(500).json({ error: errorMessage });
-}
-
 /* 
     creates new date obj in a format we can use in db
 
@@ -56,4 +52,4 @@ function newDate() {
     return new Date().toJSON().slice(0, 10)
 }
 
-module.exports = { getCompanyByCode, getInvoiceById, getInvoicesByCompany, handleNotFoundError, handleServerError, newDate }
+module.exports = { getCompanyByCode, getInvoiceById, getInvoicesByCompany, handleNotFoundError, newDate }
