@@ -24,8 +24,7 @@ router.get("/", async (req, res) => {
         }))
         return res.status(200).json({ companies: companies })
     } catch (err) {
-        console.log(err)
-        return res.status(500).json({ err: 'An error occurred while getting all companies' })
+        return res.status(500).json({ message: `${e}` , route: "GET /companies"})
     }
 })
 
@@ -52,8 +51,7 @@ router.get("/:code", async (req, res) => {
 
         return res.status(200).json({ company: { code, name, description, industries, invoices } })
     } catch (err) {
-        console.log(err)
-        return helpers.handleServerError(res, 'An error occurred while getting a company')
+        return res.status(500).json({ message: `${e}` , route: "GET /companies/:code"})
     }
 })
 
@@ -74,9 +72,8 @@ router.post("/", async (req, res) => {
         )
         const newCompany = result.rows[0]
         return res.status(201).json({ company: newCompany })
-    } catch (err) {
-        console.log(err)
-        return res.status(500).json({ err: "An error occured while creating a new company" })
+    } catch (e) {
+        return res.status(500).json({ message: `${e}` , route: "POST /companies"})
     }
 })
 
@@ -107,9 +104,8 @@ router.put("/:code", async (req, res) => {
         )
         const company = result.rows[0]
         return res.status(200).json({ company })
-    } catch (err) {
-        console.log(err)
-        return helpers.handleServerError(res, err)
+    } catch (e) {
+        return res.status(500).json({ message: `${e}` , route: "PUT /companies/:code"})
     }
 })
 
@@ -133,15 +129,8 @@ router.delete("/:code", async (req, res) => {
         }
         return res.status(200).json({ status: "deleted" })
     } catch (err) {
-        console.log(err)
-        return res.status(500).json({ err: "An error occured while deleting a company" })
+        return res.status(500).json({ message: `${e}` , route: "DELETE /companies/:code"})
     }
 })
 
 module.exports = router
-
-// Add routes for:
-
-// adding an industry
-// listing all industries, which should show the company code(s) for that industry
-// associating an industry to a company
